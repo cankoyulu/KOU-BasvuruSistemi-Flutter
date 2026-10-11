@@ -1,0 +1,11 @@
+{
+    "name": "KOÜ Başvuru Sistemi",
+    "short_name": "KOÜ Başvuru",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#FFFFFF",
+    "theme_color": "#317254",
+    "description": "Kocaeli Üniversitesi Başvuru Sistemi",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false
+}

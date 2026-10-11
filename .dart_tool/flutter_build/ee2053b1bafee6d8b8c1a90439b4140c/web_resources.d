@@ -1,0 +1,1 @@
+ build/web/manifest.json build/web/index.html:  /app/web/manifest.json /app/web/index.html
