@@ -2,7 +2,20 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
-import 'package:json_object_lite/json_object_lite.dart' as jsonobject;
+import 'package:json_object_lite/json_object_lite.dart';
+
+/// Response object compatible with the old Wilt interface.
+/// Uses real fields instead of JsonObjectLite dot-notation setters.
+class CouchResponse {
+  bool error;
+  int errorCode;
+  String method;
+  String responseText;
+  JsonObjectLite<dynamic> jsonCouchResponse;
+
+  /// Alias for jsonCouchResponse (some code paths access .json).
+  JsonObjectLite<dynamic> get json => jsonCouchResponse;
+}
 
 /// Lightweight CouchDB client for Flutter Web using dart:html HttpRequest.
 /// Replaces the Wilt library which was unreliable in the browser
@@ -39,11 +52,10 @@ class DatabaseHelper {
     return 'Basic $encoded';
   }
 
-  /// Low-level HTTP request returning a response object compatible with
-  /// the old Wilt interface (jsonCouchResponse, error, etc.).
-  Future<dynamic> _request(String method, String url,
+  /// Low-level HTTP request returning a CouchResponse object.
+  Future<CouchResponse> _request(String method, String url,
       {String body, Map<String, String> extraHeaders}) async {
-    final completer = Completer<dynamic>();
+    final completer = Completer<CouchResponse>();
 
     final headers = <String, String>{
       'Accept': 'application/json',
@@ -59,32 +71,32 @@ class DatabaseHelper {
       headers.forEach((k, v) => xhr.setRequestHeader(k, v));
 
       xhr.onLoad.listen((_) {
-        final response = jsonobject.JsonObjectLite<dynamic>();
-        response.error = false;
+        final response = CouchResponse();
         response.errorCode = xhr.status;
         response.responseText = xhr.responseText;
         response.method = method;
 
         if (xhr.status >= 200 && xhr.status < 300) {
+          response.error = false;
           try {
             response.jsonCouchResponse =
-                jsonobject.JsonObjectLite<dynamic>.fromJsonString(xhr.responseText);
+                JsonObjectLite<dynamic>.fromJsonString(xhr.responseText);
           } catch (e) {
             response.error = true;
-            final err = jsonobject.JsonObjectLite<dynamic>();
-            err.error = 'json Decode Error';
-            err.reason = e.toString();
+            final err = JsonObjectLite<dynamic>();
+            err['error'] = 'json Decode Error';
+            err['reason'] = e.toString();
             response.jsonCouchResponse = err;
           }
         } else {
           response.error = true;
           try {
             response.jsonCouchResponse =
-                jsonobject.JsonObjectLite<dynamic>.fromJsonString(xhr.responseText);
+                JsonObjectLite<dynamic>.fromJsonString(xhr.responseText);
           } catch (e) {
-            final err = jsonobject.JsonObjectLite<dynamic>();
-            err.error = 'HTTP ${xhr.status}';
-            err.reason = xhr.statusText ?? 'Request failed';
+            final err = JsonObjectLite<dynamic>();
+            err['error'] = 'HTTP ${xhr.status}';
+            err['reason'] = xhr.statusText ?? 'Request failed';
             response.jsonCouchResponse = err;
           }
         }
@@ -95,13 +107,13 @@ class DatabaseHelper {
       });
 
       xhr.onError.listen((_) {
-        final response = jsonobject.JsonObjectLite<dynamic>();
+        final response = CouchResponse();
         response.error = true;
         response.errorCode = 0;
         response.method = method;
-        final err = jsonobject.JsonObjectLite<dynamic>();
-        err.error = 'Network error';
-        err.reason = 'HTTP request failed';
+        final err = JsonObjectLite<dynamic>();
+        err['error'] = 'Network error';
+        err['reason'] = 'HTTP request failed';
         response.jsonCouchResponse = err;
 
         if (!completer.isCompleted) {
@@ -115,13 +127,13 @@ class DatabaseHelper {
         xhr.send();
       }
     } catch (e) {
-      final response = jsonobject.JsonObjectLite<dynamic>();
+      final response = CouchResponse();
       response.error = true;
       response.errorCode = 0;
       response.method = method;
-      final err = jsonobject.JsonObjectLite<dynamic>();
-      err.error = 'Exception';
-      err.reason = e.toString();
+      final err = JsonObjectLite<dynamic>();
+      err['error'] = 'Exception';
+      err['reason'] = e.toString();
       response.jsonCouchResponse = err;
 
       if (!completer.isCompleted) {
@@ -137,19 +149,19 @@ class DatabaseHelper {
   DatabaseHelper Connection() => this;
 
   /// GET a document by id.
-  Future<dynamic> getDocument(String id) async {
+  Future<CouchResponse> getDocument(String id) async {
     final url = _buildUrl(id);
     return _request('GET', url);
   }
 
   /// GET a raw path (e.g. a view URL).
-  Future<dynamic> get(String path) async {
+  Future<CouchResponse> get(String path) async {
     final url = _buildUrl(path);
     return _request('GET', url);
   }
 
   /// POST a document (CouchDB generates a random _id).
-  Future<dynamic> postDocument(jsonobject.JsonObjectLite<dynamic> document,
+  Future<CouchResponse> postDocument(JsonObjectLite<dynamic> document,
       {String path}) async {
     var urlPath = path != null ? '/$path' : '/';
     final url = _buildUrl(urlPath);
@@ -159,20 +171,15 @@ class DatabaseHelper {
   }
 
   /// PUT a document with a specific _id.
-  Future<dynamic> putDocument(
-      String id, jsonobject.JsonObjectLite<dynamic> document,
+  Future<CouchResponse> putDocument(
+      String id, JsonObjectLite<dynamic> document,
       [String rev]) async {
     var urlPath = id;
     if (rev != null) {
       urlPath = '$id?rev=$rev';
     }
     final url = _buildUrl(urlPath);
-    String jsonData;
-    if (rev != null) {
-      jsonData = json.encode(document);
-    } else {
-      jsonData = json.encode(document);
-    }
+    final jsonData = json.encode(document);
     return _request('PUT', url,
         body: jsonData,
         extraHeaders: {'Content-Type': 'application/json'});
