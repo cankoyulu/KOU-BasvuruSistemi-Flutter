@@ -1,0 +1,37 @@
+name: yazgel_project
+description: A new Flutter project.
+
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.12.0 <3.0.0"
+
+dependencies:
+  animations: ^2.0.2
+  balancedtrees: ^1.0.0
+  cupertino_icons: ^1.0.2
+  file_picker: ^4.2.0
+  firebase_auth: ^3.1.4
+  firebase_core: ^1.8.0
+  firebase_storage: ^10.0.6
+  flutter:
+    sdk: flutter
+  http: ^0.13.0
+  image_picker: ^0.8.4+4
+  json_object_lite: ^3.0.0
+  syncfusion_flutter_pdf: ^19.3.48-beta
+  url_launcher: ^6.0.12
+  wilt: ^6.0.0
+
+dev_dependencies:
+  flutter_lints: ^1.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - lib/assets/pdf/
+    - lib/assets/

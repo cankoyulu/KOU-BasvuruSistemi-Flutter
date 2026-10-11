@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:balancedtrees/bplustree/bplustree.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -10,9 +10,9 @@ import 'package:flutter/widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:yazgel_project/model/application_model.dart';
 import 'package:yazgel_project/service/application_service.dart';
+import 'package:yazgel_project/utils/web_helper.dart';
 import 'progress.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:open_file/open_file.dart';
 
 List<Map<String, dynamic>> files = [];
 final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -219,46 +219,34 @@ class _fileUploadState extends State<fileUpload> {
     switch (filetype) {
       case 'Pdf':
         result = await FilePicker.platform
-            .pickFiles(type: FileType.custom, allowedExtensions: [
+            .pickFiles(withData: true, type: FileType.custom, allowedExtensions: [
           'pdf',
         ]);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Doc':
         result = await FilePicker.platform.pickFiles(
-            type: FileType.custom, allowedExtensions: ['doc', 'docx']);
+            withData: true, type: FileType.custom, allowedExtensions: ['doc', 'docx']);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Image':
-        result = await FilePicker.platform.pickFiles(type: FileType.image);
+        result = await FilePicker.platform.pickFiles(withData: true, type: FileType.image);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Hepsi':
-        result = await FilePicker.platform.pickFiles();
+        result = await FilePicker.platform.pickFiles(withData: true);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
     }
@@ -266,17 +254,17 @@ class _fileUploadState extends State<fileUpload> {
 
   // Seçilmiş belgeyi gör
   void viewFile(PlatformFile file) {
-    OpenFile.open(file.path);
+    viewFileBytes(file.bytes, file.name);
   }
 }
 
 Future uploadFirebase(String path, Map<String, dynamic> file) async {
   if (file != null) {
-    if (file["file"].absolute.existsSync()) {
+    if (file["bytes"] != null) {
       var res = await _storage
           .ref()
           .child("$path/${file['fileName']}")
-          .putFile(file["file"]);
+          .putData(file["bytes"]);
       var uploadedFile = await res.ref.getDownloadURL();
       return uploadedFile;
     }

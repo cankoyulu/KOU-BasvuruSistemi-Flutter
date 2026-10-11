@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:balancedtrees/bplustree/bplustree.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,14 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:yazgel_project/model/application_model.dart';
 import 'package:yazgel_project/model/faculty_model.dart';
 import 'package:yazgel_project/service/application_service.dart';
 import 'package:yazgel_project/service/faculty_service.dart';
+import 'package:yazgel_project/utils/web_helper.dart';
 import 'package:yazgel_project/views/progress.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:open_file/open_file.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:flutter/services.dart';
 
@@ -157,46 +156,34 @@ class _fileUploadState extends State<fileUpload> {
     switch (filetype) {
       case 'Pdf':
         result = await FilePicker.platform
-            .pickFiles(type: FileType.custom, allowedExtensions: [
+            .pickFiles(withData: true, type: FileType.custom, allowedExtensions: [
           'pdf',
         ]);
         if (result == null) return;
         file = result!.files.first;
-        final filePath = file!.path;
-        final fileName = file!.name;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Doc':
         result = await FilePicker.platform.pickFiles(
-            type: FileType.custom, allowedExtensions: ['doc', 'docx']);
+            withData: true, type: FileType.custom, allowedExtensions: ['doc', 'docx']);
         if (result == null) return;
         file = result!.files.first;
-        final filePath = file!.path;
-        final fileName = file!.name;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Image':
-        result = await FilePicker.platform.pickFiles(type: FileType.image);
+        result = await FilePicker.platform.pickFiles(withData: true, type: FileType.image);
         if (result == null) return;
         file = result!.files.first;
-        final filePath = file!.path;
-        final fileName = file!.name;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Hepsi':
-        result = await FilePicker.platform.pickFiles();
+        result = await FilePicker.platform.pickFiles(withData: true);
         if (result == null) return;
         file = result!.files.first;
-        final filePath = file!.path;
-        final fileName = file!.name;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
     }
@@ -204,17 +191,17 @@ class _fileUploadState extends State<fileUpload> {
 
   // Seçilmiş belgeyi gör
   void viewFile(PlatformFile file) {
-    OpenFile.open(file.path);
+    viewFileBytes(file.bytes, file.name);
   }
 }
 
 Future uploadFirebase(String path, Map<String, dynamic> file) async {
   if (file != null) {
-    if (file["file"].absolute.existsSync()) {
+    if (file["bytes"] != null) {
       var res = await _storage
           .ref()
           .child("$path/${file['fileName']}")
-          .putFile(file["file"]);
+          .putData(file["bytes"]);
       var uploadedFile = await res.ref.getDownloadURL();
       return uploadedFile;
     }
@@ -1032,68 +1019,62 @@ Future<List<int>> _readDocData(String name) async {
   return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }
 
-insertDataToPdf(PdfPage page, String data, List<int> bounds, String path) {
+insertDataToPdf(PdfPage page, String data, List<int> bounds) {
   page.graphics.drawString(data,
-      PdfTrueTypeFont(File('$path/Roboto-Black.ttf').readAsBytesSync(), 10),
+      PdfStandardFont(PdfFontFamily.helvetica, 10),
       brush: PdfSolidBrush(PdfColor(0, 0, 0)),
       bounds:
           Rect.fromLTWH(bounds[0].toDouble(), bounds[1].toDouble(), 200, 20));
 }
 
 pdfGenerate(dynamic student) async {
-  Directory appDocDir = await getApplicationDocumentsDirectory();
-  String appDocPath = appDocDir.path;
-  print(appDocPath);
   final PdfDocument document =
       PdfDocument(inputBytes: await _readDocData('yataygecis.pdf'));
   final PdfPage page = document.pages[0];
-  insertDataToPdf(page, 'X', appType, appDocPath);
-  insertDataToPdf(page, student.nameSurname, [150, 160], appDocPath);
-  insertDataToPdf(page, student.identityCard, [150, 180], appDocPath);
+  insertDataToPdf(page, 'X', appType);
+  insertDataToPdf(page, student.nameSurname, [150, 160]);
+  insertDataToPdf(page, student.identityCard, [150, 180]);
   List<String> date = student.dateBirth.split("/");
-  insertDataToPdf(page, date[0], [365, 180], appDocPath);
-  insertDataToPdf(page, date[1], [390, 180], appDocPath);
-  insertDataToPdf(page, date[2], [410, 180], appDocPath);
-  insertDataToPdf(page, student.mail, [150, 195], appDocPath);
-  insertDataToPdf(page, student.telNum, [150, 215], appDocPath);
-  insertDataToPdf(page, student.address.home, [150, 235], appDocPath);
+  insertDataToPdf(page, date[0], [365, 180]);
+  insertDataToPdf(page, date[1], [390, 180]);
+  insertDataToPdf(page, date[2], [410, 180]);
+  insertDataToPdf(page, student.mail, [150, 195]);
+  insertDataToPdf(page, student.telNum, [150, 215]);
+  insertDataToPdf(page, student.address.home, [150, 235]);
   insertDataToPdf(
-      page, student.universityInfo.universityName, [330, 283], appDocPath);
+      page, student.universityInfo.universityName, [330, 283]);
   insertDataToPdf(
-      page, student.universityInfo.facility, [330, 300], appDocPath);
+      page, student.universityInfo.facility, [330, 300]);
   insertDataToPdf(
-      page, student.universityInfo.department, [330, 320], appDocPath);
-  insertDataToPdf(page, 'X', currentStudyBounds, appDocPath);
+      page, student.universityInfo.department, [330, 320]);
+  insertDataToPdf(page, 'X', currentStudyBounds);
   insertDataToPdf(
-      page, student.universityInfo.grade.toString(), [430, 340], appDocPath);
-  insertDataToPdf(page, pdfFields["disiplin"], [330, 360], appDocPath);
-  insertDataToPdf(page, pdfFields["notortalama"], [330, 380], appDocPath);
-  insertDataToPdf(page, pdfFields["öğrencino"], [363, 398], appDocPath);
-  insertDataToPdf(page, pdfFields["yerleştirmeyıl"], [432, 415], appDocPath);
+      page, student.universityInfo.grade.toString(), [430, 340]);
+  insertDataToPdf(page, pdfFields["disiplin"], [330, 360]);
+  insertDataToPdf(page, pdfFields["notortalama"], [330, 380]);
+  insertDataToPdf(page, pdfFields["öğrencino"], [363, 398]);
+  insertDataToPdf(page, pdfFields["yerleştirmeyıl"], [432, 415]);
   insertDataToPdf(
       page,
       pdfFields["yerleştirmepuantür"] == null
           ? ""
           : pdfFields["yerleştirmepuantür"],
-      [432, 435],
-      appDocPath);
+      [432, 435]);
   insertDataToPdf(
       page,
       pdfFields["yabancıdilpuan"] == null ? "" : pdfFields["yabancıdilpuan"],
-      [112, 465],
-      appDocPath);
-  insertDataToPdf(page, pdfFields["selectedFaculty"], [222, 508], appDocPath);
+      [112, 465]);
+  insertDataToPdf(page, pdfFields["selectedFaculty"], [222, 508]);
   insertDataToPdf(
-      page, pdfFields["selectedDepartment"], [222, 528], appDocPath);
-  insertDataToPdf(page, 'X', [222, 545], appDocPath);
+      page, pdfFields["selectedDepartment"], [222, 528]);
+  insertDataToPdf(page, 'X', [222, 545]);
   insertDataToPdf(
       page,
       pdfFields["puantür"] == null ? "" : pdfFields["puantür"],
-      [122, 575],
-      appDocPath);
-  File('$appDocPath/yataygecis_out.pdf').writeAsBytes(document.save());
+      [122, 575]);
+  final bytes = document.save();
   document.dispose();
-  OpenFile.open('$appDocPath/yataygecis_out.pdf');
+  downloadPdf('yataygecis_out.pdf', bytes);
 }
 
 class _yatayGecisState extends State<yatayGecis> {

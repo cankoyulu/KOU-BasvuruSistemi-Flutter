@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:balancedtrees/bplustree/bplustree.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -8,13 +8,12 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:yazgel_project/model/application_model.dart';
 import 'package:yazgel_project/service/application_service.dart';
+import 'package:yazgel_project/utils/web_helper.dart';
 import 'progress.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:open_file/open_file.dart';
 
 Map pdfFields = {};
 List<int> currentStudyBounds = [];
@@ -157,46 +156,34 @@ class _fileUploadState extends State<fileUpload> {
     switch (filetype) {
       case 'Pdf':
         result = await FilePicker.platform
-            .pickFiles(type: FileType.custom, allowedExtensions: [
+            .pickFiles(withData: true, type: FileType.custom, allowedExtensions: [
           'pdf',
         ]);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Doc':
         result = await FilePicker.platform.pickFiles(
-            type: FileType.custom, allowedExtensions: ['doc', 'docx']);
+            withData: true, type: FileType.custom, allowedExtensions: ['doc', 'docx']);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Image':
-        result = await FilePicker.platform.pickFiles(type: FileType.image);
+        result = await FilePicker.platform.pickFiles(withData: true, type: FileType.image);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Hepsi':
-        result = await FilePicker.platform.pickFiles();
+        result = await FilePicker.platform.pickFiles(withData: true);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
     }
@@ -204,17 +191,17 @@ class _fileUploadState extends State<fileUpload> {
 
   // Seçilmiş belgeyi gör
   void viewFile(PlatformFile file) {
-    OpenFile.open(file.path);
+    viewFileBytes(file.bytes, file.name);
   }
 }
 
 Future uploadFirebase(String path, Map<String, dynamic> file) async {
   if (file != null) {
-    if (file["file"].absolute.existsSync()) {
+    if (file["bytes"] != null) {
       var res = await _storage
           .ref()
           .child("$path/${file['fileName']}")
-          .putFile(file["file"]);
+          .putData(file["bytes"]);
       var uploadedFile = await res.ref.getDownloadURL();
       return uploadedFile;
     }
@@ -461,37 +448,34 @@ Future<List<int>> _readDocData(String name) async {
   return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }
 
-insertDataToPdf(PdfPage page, String data, List<int> bounds, String path) {
+insertDataToPdf(PdfPage page, String data, List<int> bounds) {
   page.graphics.drawString(data,
-      PdfTrueTypeFont(File('$path/Roboto-Black.ttf').readAsBytesSync(), 10),
+      PdfStandardFont(PdfFontFamily.helvetica, 10),
       brush: PdfSolidBrush(PdfColor(0, 0, 0)),
       bounds:
           Rect.fromLTWH(bounds[0].toDouble(), bounds[1].toDouble(), 200, 20));
 }
 
 pdfGenerate(dynamic student) async {
-  Directory appDocDir = await getApplicationDocumentsDirectory();
-  String appDocPath = appDocDir.path;
-  print(appDocPath);
   final PdfDocument document =
       PdfDocument(inputBytes: await _readDocData('cap.pdf'));
   final PdfPage page = document.pages[0];
-  insertDataToPdf(page, pdfFields['targetfaculty'], [235, 137], appDocPath);
-  insertDataToPdf(page, pdfFields['targetdepartment'], [155, 150], appDocPath);
-  insertDataToPdf(page, student.universityInfo.facility, [90, 187], appDocPath);
+  insertDataToPdf(page, pdfFields['targetfaculty'], [235, 137]);
+  insertDataToPdf(page, pdfFields['targetdepartment'], [155, 150]);
+  insertDataToPdf(page, student.universityInfo.facility, [90, 187]);
   insertDataToPdf(
-      page, student.universityInfo.department, [175, 187], appDocPath);
+      page, student.universityInfo.department, [175, 187]);
   String studentNum = student.sId.split('-')[1];
-  insertDataToPdf(page, studentNum, [90, 200], appDocPath);
-  insertDataToPdf(page, student.nameSurname, [215, 200], appDocPath);
-  insertDataToPdf(page, pdfFields['targetdepartment'], [215, 238], appDocPath);
-  insertDataToPdf(page, 'X', currentStudyBounds, appDocPath); //106-189
-  insertDataToPdf(page, student.address.home, [115, 405], appDocPath);
-  insertDataToPdf(page, student.telNum, [115, 433], appDocPath);
-  insertDataToPdf(page, student.mail, [115, 445], appDocPath);
-  File('$appDocPath/cap_out.pdf').writeAsBytes(document.save());
+  insertDataToPdf(page, studentNum, [90, 200]);
+  insertDataToPdf(page, student.nameSurname, [215, 200]);
+  insertDataToPdf(page, pdfFields['targetdepartment'], [215, 238]);
+  insertDataToPdf(page, 'X', currentStudyBounds); //106-189
+  insertDataToPdf(page, student.address.home, [115, 405]);
+  insertDataToPdf(page, student.telNum, [115, 433]);
+  insertDataToPdf(page, student.mail, [115, 445]);
+  final bytes = document.save();
   document.dispose();
-  OpenFile.open('$appDocPath/cap_out.pdf');
+  downloadPdf('cap_out.pdf', bytes);
 }
 
 class _capState extends State<cap> {

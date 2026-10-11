@@ -1,0 +1,43 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "FIREBASE_API_KEY",
+      "description": "Firebase Web API Key — Firebase Console > Project Settings > Web app config",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "FIREBASE_AUTH_DOMAIN",
+      "description": "Firebase Auth Domain (e.g. project.firebaseapp.com) — Firebase Console > Project Settings > Web app config",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "FIREBASE_PROJECT_ID",
+      "description": "Firebase Project ID — Firebase Console > Project Settings > Web app config",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "FIREBASE_STORAGE_BUCKET",
+      "description": "Firebase Storage Bucket (e.g. project.appspot.com) — Firebase Console > Project Settings > Web app config",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "FIREBASE_MESSAGING_SENDER_ID",
+      "description": "Firebase Messaging Sender ID — Firebase Console > Project Settings > Web app config",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    },
+    {
+      "name": "FIREBASE_APP_ID",
+      "description": "Firebase Web App ID — Firebase Console > Project Settings > Web app config",
+      "requiredAtBoot": true,
+      "generatedForDevelopment": true
+    }
+  ]
+}

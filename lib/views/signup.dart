@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -23,7 +23,7 @@ class _SignupState extends State<Signup> {
   StudentModel student = StudentModel();
   Address address = Address();
   UniversityInfo uniInfo = UniversityInfo();
-  File _image = File("");
+  Uint8List? _imageBytes;
   final imagePicker = ImagePicker();
 
   Future registerAuth(String mail, String pass) async {
@@ -52,14 +52,15 @@ class _SignupState extends State<Signup> {
     final ImagePicker _picker = ImagePicker();
     XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
+      final bytes = await image.readAsBytes();
       setState(() {
-        _image = File(image.path);
+        _imageBytes = bytes;
       });
     }
   }
 
-  Future uploadPic(File file, String path) async {
-    var res = await _storage.ref().child("$path/photo.jpg").putFile(file);
+  Future uploadPic(Uint8List bytes, String path) async {
+    var res = await _storage.ref().child("$path/photo.jpg").putData(bytes);
     var uploadedPic = await res.ref.getDownloadURL();
     return uploadedPic;
   }
@@ -589,8 +590,8 @@ class _SignupState extends State<Signup> {
                         ),
                       ],
                     ),
-                    child: _image.path != ""
-                        ? Image.file(_image, fit: BoxFit.cover)
+                    child: _imageBytes != null
+                        ? Image.memory(_imageBytes!, fit: BoxFit.cover)
                         : Text(
                             'Lütfen fotoğraf ekleyin.',
                             style: TextStyle(
@@ -609,7 +610,7 @@ class _SignupState extends State<Signup> {
                           builder: (context) => const CupertinoAlertDialog(
                               content:
                                   Center(child: CircularProgressIndicator())));
-                      await uploadPic(_image, student.sId).then((value) {
+                      await uploadPic(_imageBytes!, student.sId).then((value) {
                         student.photoUrl = value;
                       });
                       student.nameSurname = name + " " + surname;

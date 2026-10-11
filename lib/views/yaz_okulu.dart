@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:balancedtrees/balancedtrees.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -9,14 +9,13 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:yazgel_project/model/application_model.dart';
 import 'package:yazgel_project/service/application_service.dart';
 import 'package:yazgel_project/service/faculty_service.dart';
+import 'package:yazgel_project/utils/web_helper.dart';
 import 'progress.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:open_file/open_file.dart';
 
 Map pdfData = {};
 List<Map<String, dynamic>> files = [];
@@ -209,46 +208,34 @@ class _fileUploadState extends State<fileUpload> {
     switch (filetype) {
       case 'Pdf':
         result = await FilePicker.platform
-            .pickFiles(type: FileType.custom, allowedExtensions: [
+            .pickFiles(withData: true, type: FileType.custom, allowedExtensions: [
           'pdf',
         ]);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Doc':
         result = await FilePicker.platform.pickFiles(
-            type: FileType.custom, allowedExtensions: ['doc', 'docx']);
+            withData: true, type: FileType.custom, allowedExtensions: ['doc', 'docx']);
         if (result == null) return;
         file = result!.files.first;
-        final fileName = file!.name;
-        final filePath = file!.path;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Image':
-        result = await FilePicker.platform.pickFiles(type: FileType.image);
+        result = await FilePicker.platform.pickFiles(withData: true, type: FileType.image);
         if (result == null) return;
         file = result!.files.first;
-        final filePath = file!.path;
-        final fileName = file!.name;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
       case 'Hepsi':
-        result = await FilePicker.platform.pickFiles();
+        result = await FilePicker.platform.pickFiles(withData: true);
         if (result == null) return;
         file = result!.files.first;
-        final filePath = file!.path;
-        final fileName = file!.name;
-        final File fileForFirebase = File(filePath!);
-        files.add({"fileName": input, "file": fileForFirebase});
+        files.add({"fileName": input, "bytes": file!.bytes, "name": file!.name});
         setState(() {});
         break;
     }
@@ -256,17 +243,17 @@ class _fileUploadState extends State<fileUpload> {
 
   // Seçilmiş belgeyi gör
   void viewFile(PlatformFile file) {
-    OpenFile.open(file.path);
+    viewFileBytes(file.bytes, file.name);
   }
 }
 
 Future uploadFirebase(String path, Map<String, dynamic> file) async {
   if (file != null) {
-    if (file["file"].absolute.existsSync()) {
+    if (file["bytes"] != null) {
       var res = await _storage
           .ref()
           .child("$path/${file['fileName']}")
-          .putFile(file["file"]);
+          .putData(file["bytes"]);
       var uploadedFile = await res.ref.getDownloadURL();
       return uploadedFile;
     }
@@ -640,71 +627,68 @@ Future<List<int>> _readDocData(String name) async {
   return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }
 
-insertDataToPdf(PdfPage page, String data, List<int> bounds, String path) {
+insertDataToPdf(PdfPage page, String data, List<int> bounds) {
   page.graphics.drawString(data,
-      PdfTrueTypeFont(File('$path/Roboto-Black.ttf').readAsBytesSync(), 8),
+      PdfStandardFont(PdfFontFamily.helvetica, 8),
       brush: PdfSolidBrush(PdfColor(0, 0, 0)),
       bounds:
           Rect.fromLTWH(bounds[0].toDouble(), bounds[1].toDouble(), 200, 20));
 }
 
 pdfGenerate(dynamic student) async {
-  Directory appDocDir = await getApplicationDocumentsDirectory();
-  String appDocPath = appDocDir.path;
-  print(appDocPath);
   final PdfDocument document =
       PdfDocument(inputBytes: await _readDocData('yazokulu.pdf'));
   final PdfPage page = document.pages[0];
-  insertDataToPdf(page, pdfData["faculty"], [215, 110], appDocPath);
-  insertDataToPdf(page, pdfData["department"], [175, 125], appDocPath);
+  insertDataToPdf(page, pdfData["faculty"], [215, 110]);
+  insertDataToPdf(page, pdfData["department"], [175, 125]);
   insertDataToPdf(
-      page, student.universityInfo.facility, [100, 143], appDocPath);
+      page, student.universityInfo.facility, [100, 143]);
   insertDataToPdf(
-      page, student.universityInfo.department, [198, 137], appDocPath);
+      page, student.universityInfo.department, [198, 137]);
   String studentNum = student.sId.split("-")[1];
-  insertDataToPdf(page, studentNum, [328, 143], appDocPath);
-  insertDataToPdf(page, student.nameSurname, [432, 143], appDocPath);
-  insertDataToPdf(page, '2021', [100, 171], appDocPath);
-  insertDataToPdf(page, '22', [124, 171], appDocPath);
-  insertDataToPdf(page, pdfData["danışman"], [256, 253], appDocPath);
-  insertDataToPdf(page, student.address.home, [256, 265], appDocPath);
-  insertDataToPdf(page, student.telNum, [256, 278], appDocPath);
-  insertDataToPdf(page, student.mail, [256, 292], appDocPath);
-  insertDataToPdf(page, pdfData["başvurulanüni"], [256, 318], appDocPath);
-  insertDataToPdf(page, pdfData["tarih"], [256, 332], appDocPath);
-  insertDataToPdf(page, pdfData["sdersad0"], [200, 397], appDocPath);
-  insertDataToPdf(page, pdfData["sderst0"], [430, 397], appDocPath);
-  insertDataToPdf(page, pdfData["sdersu0"], [460, 397], appDocPath);
-  insertDataToPdf(page, pdfData["sdersl0"], [490, 397], appDocPath);
-  insertDataToPdf(page, pdfData["sdersakts0"], [520, 397], appDocPath);
-  insertDataToPdf(page, pdfData["sdersad1"], [200, 427], appDocPath);
-  insertDataToPdf(page, pdfData["sderst1"], [430, 427], appDocPath);
-  insertDataToPdf(page, pdfData["sdersu1"], [460, 427], appDocPath);
-  insertDataToPdf(page, pdfData["sdersl1"], [490, 427], appDocPath);
-  insertDataToPdf(page, pdfData["sdersakts1"], [520, 427], appDocPath);
-  insertDataToPdf(page, pdfData["sdersad2"], [200, 457], appDocPath);
-  insertDataToPdf(page, pdfData["sderst2"], [430, 457], appDocPath);
-  insertDataToPdf(page, pdfData["sdersu2"], [460, 457], appDocPath);
-  insertDataToPdf(page, pdfData["sdersl2"], [490, 457], appDocPath);
-  insertDataToPdf(page, pdfData["sdersakts2"], [520, 457], appDocPath);
-  insertDataToPdf(page, pdfData["ydersad0"], [256, 538], appDocPath);
-  insertDataToPdf(page, pdfData["yderst0"], [430, 538], appDocPath);
-  insertDataToPdf(page, pdfData["ydersu0"], [460, 538], appDocPath);
-  insertDataToPdf(page, pdfData["ydersl0"], [490, 538], appDocPath);
-  insertDataToPdf(page, pdfData["ydersakts0"], [520, 538], appDocPath);
-  insertDataToPdf(page, pdfData["ydersad1"], [256, 588], appDocPath);
-  insertDataToPdf(page, pdfData["yderst1"], [430, 588], appDocPath);
-  insertDataToPdf(page, pdfData["ydersu1"], [460, 588], appDocPath);
-  insertDataToPdf(page, pdfData["ydersl1"], [490, 588], appDocPath);
-  insertDataToPdf(page, pdfData["ydersakts1"], [520, 588], appDocPath);
-  insertDataToPdf(page, pdfData["ydersad2"], [256, 628], appDocPath);
-  insertDataToPdf(page, pdfData["yderst2"], [430, 628], appDocPath);
-  insertDataToPdf(page, pdfData["ydersu2"], [460, 628], appDocPath);
-  insertDataToPdf(page, pdfData["ydersl2"], [490, 628], appDocPath);
-  insertDataToPdf(page, pdfData["ydersakts2"], [520, 628], appDocPath);
-  File('$appDocPath/yazokulu_out.pdf').writeAsBytes(document.save());
+  insertDataToPdf(page, studentNum, [328, 143]);
+  insertDataToPdf(page, student.nameSurname, [432, 143]);
+  insertDataToPdf(page, '2021', [100, 171]);
+  insertDataToPdf(page, '22', [124, 171]);
+  insertDataToPdf(page, pdfData["danışman"], [256, 253]);
+  insertDataToPdf(page, student.address.home, [256, 265]);
+  insertDataToPdf(page, student.telNum, [256, 278]);
+  insertDataToPdf(page, student.mail, [256, 292]);
+  insertDataToPdf(page, pdfData["başvurulanüni"], [256, 318]);
+  insertDataToPdf(page, pdfData["tarih"], [256, 332]);
+  insertDataToPdf(page, pdfData["sdersad0"], [200, 397]);
+  insertDataToPdf(page, pdfData["sderst0"], [430, 397]);
+  insertDataToPdf(page, pdfData["sdersu0"], [460, 397]);
+  insertDataToPdf(page, pdfData["sdersl0"], [490, 397]);
+  insertDataToPdf(page, pdfData["sdersakts0"], [520, 397]);
+  insertDataToPdf(page, pdfData["sdersad1"], [200, 427]);
+  insertDataToPdf(page, pdfData["sderst1"], [430, 427]);
+  insertDataToPdf(page, pdfData["sdersu1"], [460, 427]);
+  insertDataToPdf(page, pdfData["sdersl1"], [490, 427]);
+  insertDataToPdf(page, pdfData["sdersakts1"], [520, 427]);
+  insertDataToPdf(page, pdfData["sdersad2"], [200, 457]);
+  insertDataToPdf(page, pdfData["sderst2"], [430, 457]);
+  insertDataToPdf(page, pdfData["sdersu2"], [460, 457]);
+  insertDataToPdf(page, pdfData["sdersl2"], [490, 457]);
+  insertDataToPdf(page, pdfData["sdersakts2"], [520, 457]);
+  insertDataToPdf(page, pdfData["ydersad0"], [256, 538]);
+  insertDataToPdf(page, pdfData["yderst0"], [430, 538]);
+  insertDataToPdf(page, pdfData["ydersu0"], [460, 538]);
+  insertDataToPdf(page, pdfData["ydersl0"], [490, 538]);
+  insertDataToPdf(page, pdfData["ydersakts0"], [520, 538]);
+  insertDataToPdf(page, pdfData["ydersad1"], [256, 588]);
+  insertDataToPdf(page, pdfData["yderst1"], [430, 588]);
+  insertDataToPdf(page, pdfData["ydersu1"], [460, 588]);
+  insertDataToPdf(page, pdfData["ydersl1"], [490, 588]);
+  insertDataToPdf(page, pdfData["ydersakts1"], [520, 588]);
+  insertDataToPdf(page, pdfData["ydersad2"], [256, 628]);
+  insertDataToPdf(page, pdfData["yderst2"], [430, 628]);
+  insertDataToPdf(page, pdfData["ydersu2"], [460, 628]);
+  insertDataToPdf(page, pdfData["ydersl2"], [490, 628]);
+  insertDataToPdf(page, pdfData["ydersakts2"], [520, 628]);
+  final bytes = document.save();
   document.dispose();
-  OpenFile.open('$appDocPath/yazokulu_out.pdf');
+  downloadPdf('yazokulu_out.pdf', bytes);
 }
 
 class _yazOkuluState extends State<yazOkulu> {
