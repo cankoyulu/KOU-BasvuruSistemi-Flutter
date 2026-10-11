@@ -24,10 +24,11 @@ class _LoginState extends State<Login> {
       var userCred = await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: user.mail, password: pass);
       return userCred;
-    } on FirebaseAuthException catch (e) {
-      final title = e.code == 'wrong-password'
-          ? "Hatalı Şifre!"
-          : "Giriş başarısız!";
+    } catch (e) {
+      String title = "Giriş başarısız!";
+      if (e is FirebaseAuthException && e.code == 'wrong-password') {
+        title = "Hatalı Şifre!";
+      }
       return showDialog(
           context: context,
           builder: (context) => CupertinoAlertDialog(

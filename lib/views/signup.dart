@@ -31,11 +31,12 @@ class _SignupState extends State<Signup> {
       await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: mail, password: pass);
       return true;
-    } on FirebaseAuthException catch (e) {
-      final title = e.code == 'email-already-in-use'
-          ? "Email halihazırda kullanılıyor!"
-          : "Kayıt başarısız!";
-      showDialog(
+    } catch (e) {
+      String title = "Kayıt başarısız!";
+      if (e is FirebaseAuthException && e.code == 'email-already-in-use') {
+        title = "Email halihazırda kullanılıyor!";
+      }
+      await showDialog(
           context: context,
           builder: (context) => CupertinoAlertDialog(
                 title: Text(title),
