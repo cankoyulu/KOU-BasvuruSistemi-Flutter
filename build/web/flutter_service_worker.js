@@ -19,9 +19,10 @@ const RESOURCES = {
 "canvaskit/canvaskit.wasm": "3de12d898ec208a5f31362cc00f09b9e",
 "canvaskit/canvaskit.js": "97937cb4c2c2073c968525a3e08c86a3",
 "version.json": "a3762424b79317602163bca3d415eccd",
-"index.html": "39534f56e2b7039c457508f4076139a9",
-"/": "39534f56e2b7039c457508f4076139a9",
-"flutter.js": "a85fcf6324d3c4d3ae3be1ae4931e9c5"
+"index.html": "ea777fa8487ddb3508e7959cd73cfa9a",
+"/": "ea777fa8487ddb3508e7959cd73cfa9a",
+"flutter.js": "a85fcf6324d3c4d3ae3be1ae4931e9c5",
+"firebase-config.js": "10d7e7a2d5751c748513ac05bc689f5f"
 };
 
 // The application shell files that are downloaded before a service worker can

@@ -1,1 +1,1 @@
- build/web/manifest.json build/web/index.html:  /app/web/manifest.json /app/web/index.html
+ build/web/manifest.json build/web/index.html build/web/firebase-config.js:  /app/web/manifest.json /app/web/index.html /app/web/firebase-config.js

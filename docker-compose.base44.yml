@@ -8,7 +8,8 @@ services:
       sh -ec "
       flutter config --enable-web &&
       flutter pub get &&
-      BUILD_CMD='flutter build web
+      sh /app/gen-firebase-config.sh &&
+      BUILD_CMD='flutter build web --web-renderer html
       --dart-define=FIREBASE_API_KEY=$$FIREBASE_API_KEY
       --dart-define=FIREBASE_AUTH_DOMAIN=$$FIREBASE_AUTH_DOMAIN
       --dart-define=FIREBASE_PROJECT_ID=$$FIREBASE_PROJECT_ID
@@ -21,6 +22,7 @@ services:
         CURRENT_HASH=$$(find lib/ -name '*.dart' -exec md5sum {} + 2>/dev/null | sort | md5sum | cut -d' ' -f1);
         if [ \"$$CURRENT_HASH\" != \"$$LAST_HASH\" ]; then
           echo 'Detected change, rebuilding...';
+          sh /app/gen-firebase-config.sh;
           eval $$BUILD_CMD;
           LAST_HASH=$$CURRENT_HASH;
         fi;

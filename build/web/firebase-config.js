@@ -1,0 +1,1 @@
+window.firebase.initializeApp({apiKey:"AIzaSyBRffro2R9JPM3kYn19hFx_FcQGHh7qsng",authDomain:"basvuru-374cb.firebaseapp.com",projectId:"basvuru-374cb",storageBucket:"basvuru-374cb.firebasestorage.app",messagingSenderId:"767969769260",appId:"1:767969769260:web:5079d81120e4dbbcb45e89"});
