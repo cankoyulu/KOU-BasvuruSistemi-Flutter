@@ -35,7 +35,7 @@ class ApplicationService {
   Future addApplication(ApplicationModel model) async {
     var json = model.toJsonForAdding();
 
-    await conn.postDocument(json);
+    await conn.putDocument(model.sId, json);
   }
 
   Future getAllApplicationsTree() async {

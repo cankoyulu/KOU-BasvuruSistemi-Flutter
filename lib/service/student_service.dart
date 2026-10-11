@@ -29,7 +29,7 @@ class StudentService {
   }
 
   Future getAllStudents() async {
-    String baseUrl = 'kou-database/_design/_all/_view/students';
+    String baseUrl = '_design/_all/_view/students';
     List students = [];
 
     await conn.get(baseUrl).then((value) {
@@ -60,7 +60,7 @@ class StudentService {
   Future addStudent(StudentModel model) async {
     var json = model.toJson();
 
-    var res = await conn.postDocument(json);
+    var res = await conn.putDocument(model.sId, json);
     return res;
   }
 }
