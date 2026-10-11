@@ -30,7 +30,7 @@ services:
       done
       "
     environment:
-      - BASE44_PREVIEW_MODE=1
+      - BASE44_PREVIEW_MODE
     env_file:
       - /run/base44/app.env
     expose:
@@ -90,12 +90,18 @@ services:
         condition: service_healthy
     volumes:
       - ./couchdb-seed.sh:/seed.sh:ro
-    command: ["sh", "/seed.sh"]
+    command: ["sh", "-ec", "sh /seed.sh && exec tail -f /dev/null"]
     environment:
       - COUCHDB_URL=http://couchdb:5984
       - COUCHDB_USER=admin
       - COUCHDB_PASSWORD=123321k
-    restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -u $$COUCHDB_USER:$$COUCHDB_PASSWORD $$COUCHDB_URL/kou-database/stu-201307083 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: on-failure
 
 volumes:
   couchdb_data:
