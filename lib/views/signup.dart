@@ -26,25 +26,28 @@ class _SignupState extends State<Signup> {
   Uint8List? _imageBytes;
   final imagePicker = ImagePicker();
 
-  Future registerAuth(String mail, String pass) async {
+  Future<bool> registerAuth(String mail, String pass) async {
     try {
-      var userCred = await FirebaseAuth.instance
+      await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: mail, password: pass);
+      return true;
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        return showDialog(
-            context: context,
-            builder: (context) => CupertinoAlertDialog(
-                  title: const Text("Email halihazırda kullanılıyor!"),
-                  actions: [
-                    TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text("Tamam"))
-                  ],
-                ));
-      }
+      final title = e.code == 'email-already-in-use'
+          ? "Email halihazırda kullanılıyor!"
+          : "Kayıt başarısız!";
+      showDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+                title: Text(title),
+                actions: [
+                  TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Tamam"))
+                ],
+              ));
+      return false;
     }
   }
 
@@ -610,15 +613,28 @@ class _SignupState extends State<Signup> {
                           builder: (context) => const CupertinoAlertDialog(
                               content:
                                   Center(child: CircularProgressIndicator())));
-                      await uploadPic(_imageBytes!, student.sId).then((value) {
-                        student.photoUrl = value;
-                      });
-                      student.nameSurname = name + " " + surname;
-                      student.address = address;
-                      student.universityInfo = uniInfo;
-                      await registerAuth(student.mail, pwd);
-                      await StudentService().addStudent(student).then((value) {
-                        return showDialog(
+                      try {
+                        if (_imageBytes != null) {
+                          try {
+                            var photoUrl = await uploadPic(_imageBytes!, student.sId);
+                            student.photoUrl = photoUrl;
+                          } catch (e) {
+                            student.photoUrl = "";
+                          }
+                        } else {
+                          student.photoUrl = "";
+                        }
+                        student.nameSurname = name + " " + surname;
+                        student.address = address;
+                        student.universityInfo = uniInfo;
+                        var registered = await registerAuth(student.mail, pwd);
+                        if (!registered) {
+                          Navigator.pop(context);
+                          return;
+                        }
+                        await StudentService().addStudent(student);
+                        Navigator.pop(context);
+                        showDialog(
                             context: context,
                             builder: (context) => CupertinoAlertDialog(
                                   title: const Text("Kayıt Başarılı"),
@@ -633,7 +649,21 @@ class _SignupState extends State<Signup> {
                                         child: const Text("Tamam"))
                                   ],
                                 ));
-                      });
+                      } catch (e) {
+                        Navigator.pop(context);
+                        showDialog(
+                            context: context,
+                            builder: (context) => CupertinoAlertDialog(
+                                  title: const Text("Kayıt başarısız!"),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text("Tamam"))
+                                  ],
+                                ));
+                      }
                     },
                     child: Center(
                       child: Container(

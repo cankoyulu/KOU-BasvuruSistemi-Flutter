@@ -25,20 +25,21 @@ class _LoginState extends State<Login> {
           .signInWithEmailAndPassword(email: user.mail, password: pass);
       return userCred;
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'wrong-password') {
-        return showDialog(
-            context: context,
-            builder: (context) => CupertinoAlertDialog(
-                  title: const Text("Hatalı Şifre!"),
-                  actions: [
-                    TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text("Tamam"))
-                  ],
-                ));
-      }
+      final title = e.code == 'wrong-password'
+          ? "Hatalı Şifre!"
+          : "Giriş başarısız!";
+      return showDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+                title: Text(title),
+                actions: [
+                  TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Tamam"))
+                ],
+              ));
     }
   }
 
@@ -166,23 +167,41 @@ class _LoginState extends State<Login> {
                             builder: (context) => const CupertinoAlertDialog(
                                   content: Center(child: CircularProgressIndicator()),
                                 ));
-                        final login = await StudentService().getStudent(id);
-                        if (login.mail != null) {
-                          await loginAuth(login, pass).whenComplete(() {
+                        try {
+                          final login = await StudentService().getStudent(id);
+                          if (login.mail != null) {
+                            var userCred = await loginAuth(login, pass);
                             Navigator.pop(context);
-                            if (id == 'admin') {
-                              Navigator.push(context,
-                                  CustomPageRoute(child: const AdminMenu()));
-                            } else {
-                              Navigator.push(context,
-                                  CustomPageRoute(child: Home(student: login)));
+                            if (userCred != null) {
+                              if (id == 'admin') {
+                                Navigator.push(context,
+                                    CustomPageRoute(child: const AdminMenu()));
+                              } else {
+                                Navigator.push(context,
+                                    CustomPageRoute(child: Home(student: login)));
+                              }
                             }
-                          });
-                        } else {
-                          return showDialog(
+                          } else {
+                            Navigator.pop(context);
+                            showDialog(
+                                context: context,
+                                builder: (context) => CupertinoAlertDialog(
+                                      title: const Text("Kullanıcı bulunamadı!"),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            child: const Text("Tamam"))
+                                      ],
+                                    ));
+                          }
+                        } catch (e) {
+                          Navigator.pop(context);
+                          showDialog(
                               context: context,
                               builder: (context) => CupertinoAlertDialog(
-                                    title: const Text("Kullanıcı bulunamadı!"),
+                                    title: const Text("Giriş başarısız!"),
                                     actions: [
                                       TextButton(
                                           onPressed: () {
